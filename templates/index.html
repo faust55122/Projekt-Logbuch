@@ -1,0 +1,2835 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logbuch</title>
+<style>
+  :root {
+    --paper: #F7F3EC;
+    --paper-raised: #FFFDF9;
+    --ink: #2B3A4A;
+    --ink-soft: #5C6B78;
+    --sage: #7C9885;
+    --sienna: #B5704A;
+    --rule: #DCD4C4;
+    --danger: #A4503A;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(43,58,74,0.06), 0 4px 12px rgba(43,58,74,0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    min-height: 100vh;
+  }
+
+  .ui {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  a { color: var(--sienna); }
+
+  /* ---------- Layout shells ---------- */
+
+  #app { min-height: 100vh; }
+
+  .center-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-raised);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .brand {
+    font-size: 1.3rem;
+    letter-spacing: 0.02em;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .brand .mark { color: var(--sienna); font-size: 1.5rem; line-height: 0; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .nav-tabs button {
+    background: transparent;
+    color: var(--ink-soft);
+    font-weight: 500;
+    font-size: 0.88rem;
+    padding: 7px 14px;
+    border-radius: 7px;
+  }
+  .nav-tabs button:hover { background: var(--paper); color: var(--ink); }
+  .nav-tabs button.active { background: var(--paper); color: var(--ink); font-weight: 600; }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .gallery-grid .gallery-item {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    background: var(--paper-raised);
+    aspect-ratio: 1;
+  }
+  .gallery-grid img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .gallery-grid .gallery-remove {
+    position: absolute; top: 6px; right: 6px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(43,58,74,0.75); color: white;
+    font-size: 0.85rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: none; opacity: 0; transition: opacity 0.15s ease;
+  }
+  .gallery-grid .gallery-item:hover .gallery-remove { opacity: 1; }
+
+  .gallery-upload-tile {
+    border: 2px dashed var(--rule);
+    border-radius: var(--radius);
+    aspect-ratio: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.8rem;
+  }
+  .gallery-upload-tile:hover { border-color: var(--sage); color: var(--sage); }
+  .gallery-upload-tile span.plus { font-size: 1.8rem; line-height: 1; }
+  .gallery-upload-tile input { display: none; }
+
+  .gallery-item-date, .image-grid .thumb-date {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  /* ---------- Lightbox ---------- */
+
+  .lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(43,58,74,0.92);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox-img-wrap {
+    max-width: 88vw;
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .lightbox-img-wrap img {
+    max-width: 88vw;
+    max-height: 76vh;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  }
+  .lightbox-caption {
+    margin-top: 12px;
+    color: var(--paper-raised);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 20px; right: 24px;
+    background: transparent;
+    color: var(--paper-raised);
+    font-size: 1.8rem;
+    line-height: 1;
+    border: none;
+    cursor: pointer;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+  }
+  .lightbox-close:hover { background: rgba(255,255,255,0.12); }
+  .lightbox-edit {
+    position: absolute;
+    top: 20px; left: 24px;
+    background: rgba(255,255,255,0.1);
+    color: var(--paper-raised);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    padding: 9px 16px;
+    border-radius: 20px;
+  }
+  .lightbox-edit:hover { background: rgba(255,255,255,0.2); }
+  .lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.1);
+    color: var(--paper-raised);
+    border: none;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lightbox-nav:hover { background: rgba(255,255,255,0.2); }
+  .lightbox-nav.prev { left: 24px; }
+  .lightbox-nav.next { right: 24px; }
+  .lightbox-nav:disabled { opacity: 0.25; cursor: default; }
+  .lightbox-counter {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--paper-raised);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.8rem;
+    opacity: 0.75;
+  }
+
+  @media (max-width: 600px) {
+    .lightbox-nav { width: 42px; height: 42px; font-size: 1.2rem; }
+    .lightbox-nav.prev { left: 8px; }
+    .lightbox-nav.next { right: 8px; }
+  }
+
+  /* ---------- Upload modal ---------- */
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(43,58,74,0.45);
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-card {
+    background: var(--paper-raised);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .modal-card h3 {
+    margin: 0 0 18px;
+    font-size: 1.15rem;
+  }
+  .modal-preview {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    border: 1px solid var(--rule);
+  }
+  .char-counter {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    text-align: right;
+    margin-top: -14px;
+    margin-bottom: 16px;
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  /* ---------- Gallery with quarter sidebar ---------- */
+
+  .gallery-layout {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .quarter-sidebar {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    position: sticky;
+    top: 90px;
+  }
+  .quarter-sidebar .qs-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+  .quarter-sidebar button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 7px 10px;
+    border-radius: 7px;
+    margin-bottom: 2px;
+  }
+  .quarter-sidebar button:hover { background: var(--paper-raised); color: var(--ink); }
+  .quarter-sidebar button.active {
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-weight: 700;
+    border-left: 3px solid var(--sienna);
+  }
+  .quarter-sidebar button .qs-count {
+    color: var(--ink-soft);
+    font-weight: 400;
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 700px) {
+    .gallery-layout { grid-template-columns: 1fr; }
+    .quarter-sidebar {
+      position: static;
+      display: flex;
+      overflow-x: auto;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .quarter-sidebar .qs-label { display: none; }
+    .quarter-sidebar button {
+      width: auto;
+      white-space: nowrap;
+      border-left: none;
+      border-bottom: 2px solid transparent;
+    }
+    .quarter-sidebar button.active { border-left: none; border-bottom-color: var(--sienna); }
+  }
+
+
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 36px 24px 80px;
+  }
+
+  /* ---------- Login card ---------- */
+
+  .login-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .login-card h1 {
+    margin: 0 0 6px;
+    font-size: 1.6rem;
+  }
+  .login-card .sub {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin: 0 0 28px;
+  }
+
+  label {
+    display: block;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+
+  input[type=text], input[type=email], input[type=date], textarea {
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.95rem;
+    padding: 11px 13px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  input:focus, textarea:focus {
+    outline: 2px solid var(--sage);
+    outline-offset: 1px;
+  }
+
+  .field { margin-bottom: 18px; }
+
+  button {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 18px;
+    cursor: pointer;
+    transition: transform 0.06s ease, opacity 0.15s ease;
+  }
+  button:active { transform: scale(0.98); }
+  button:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
+
+  .btn-primary { background: var(--ink); color: var(--paper-raised); width: 100%; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-secondary { background: transparent; color: var(--ink-soft); border: 1px solid var(--rule); }
+  .btn-secondary:hover { border-color: var(--ink-soft); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid transparent; }
+  .btn-danger:hover { text-decoration: underline; }
+
+  .login-toggle {
+    margin-top: 18px;
+    text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+  }
+  .login-toggle button {
+    background: none;
+    color: var(--sienna);
+    padding: 4px;
+    font-weight: 500;
+  }
+
+  .error-msg {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    color: var(--danger);
+    margin: -6px 0 16px;
+  }
+
+  /* ---------- Entry list ---------- */
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .section-head h2 { margin: 0; font-size: 1.5rem; }
+
+  .entry-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+    position: relative;
+  }
+  .entry-card:hover { border-color: var(--sage); }
+
+  .entry-week-mark {
+    position: absolute;
+    top: 20px;
+    right: 22px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--sage);
+    border: 1px solid var(--sage);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+
+  .entry-date {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .entry-date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .comment-badge, .published-badge {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .comment-badge { background: var(--paper); color: var(--ink-soft); }
+  .published-badge { background: rgba(124,152,133,0.15); color: var(--sage); }
+  .entry-card h3 { margin: 0 0 8px; font-size: 1.2rem; padding-right: 90px; }
+  .entry-preview {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    margin: 0;
+    line-height: 1.5;
+  }
+  .entry-thumbs { display: flex; gap: 6px; margin-top: 12px; }
+  .entry-thumbs img {
+    width: 52px; height: 52px; object-fit: cover; border-radius: 6px;
+    border: 1px solid var(--rule);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .empty-state .mark { font-size: 2rem; display: block; margin-bottom: 12px; color: var(--sage); }
+
+  .fab {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--sienna);
+    color: white;
+    font-size: 1.6rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(181,112,74,0.4);
+    border: none;
+    cursor: pointer;
+  }
+  .fab:hover { opacity: 0.92; }
+
+  /* ---------- Editor ---------- */
+
+  .editor-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+  }
+
+  .title-input {
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    font-size: 1.4rem;
+    border: none;
+    background: transparent;
+    padding: 4px 0;
+    margin-bottom: 4px;
+    border-bottom: 2px solid transparent;
+  }
+  .title-input:focus { outline: none; border-bottom-color: var(--sage); }
+
+  textarea.body-input {
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    font-size: 1.02rem;
+    line-height: 1.65;
+    min-height: 220px;
+    resize: vertical;
+    border: none;
+    padding: 12px 0;
+  }
+  textarea.body-input:focus { outline: none; }
+
+  .editor-meta-row {
+    display: flex;
+    gap: 16px;
+    margin: 18px 0 8px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+  }
+  .editor-meta-row .field { flex: 1; margin-bottom: 0; }
+
+  .publish-toggle-field { flex: 0 0 auto; }
+  .publish-toggle {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--paper);
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    padding: 10px 14px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+  .publish-toggle:hover { border-color: var(--sage); }
+  .publish-toggle.active {
+    background: rgba(124,152,133,0.15);
+    color: var(--sage);
+    border-color: var(--sage);
+  }
+
+  .comments-section {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .comments-heading {
+    font-size: 0.95rem;
+    margin: 0 0 14px;
+    color: var(--ink);
+  }
+  .comments-empty {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+  .comment-item {
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .comment-meta {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .comment-author { font-size: 0.8rem; font-weight: 600; color: var(--ink); }
+  .comment-date { font-size: 0.7rem; color: var(--ink-soft); }
+  .comment-content { font-size: 0.88rem; margin: 0; color: var(--ink); padding-right: 24px; }
+  .comment-delete {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: transparent;
+    color: var(--ink-soft);
+    border: none;
+    font-size: 1rem;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    line-height: 1;
+  }
+  .comment-delete:hover { background: var(--rule); color: var(--danger); }
+  .comment-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .comment-form input {
+    flex: 1;
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 9px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper-raised);
+  }
+  .comment-form input:focus { outline: 2px solid var(--sage); outline-offset: 1px; }
+
+  .image-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0;
+  }
+  .image-grid .thumb-wrap { position: relative; }
+  .image-grid img {
+    width: 96px; height: 96px; object-fit: cover; border-radius: 8px;
+    border: 1px solid var(--rule);
+  }
+  .image-grid .remove-thumb {
+    position: absolute; top: -6px; right: -6px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--danger); color: white;
+    font-size: 0.75rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--paper-raised);
+  }
+
+  .upload-zone {
+    border: 2px dashed var(--rule);
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .upload-zone:hover { border-color: var(--sage); color: var(--sage); }
+  .upload-zone input { display: none; }
+
+  .editor-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+  }
+  .editor-actions-right { display: flex; gap: 10px; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--paper-raised);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    box-shadow: var(--shadow);
+    z-index: 100;
+  }
+
+  @media (max-width: 600px) {
+    main { padding: 24px 16px 80px; }
+    .editor-meta-row { flex-direction: column; gap: 10px; }
+  }
+
+  /* ---------- Stories / AI generation ---------- */
+
+  .stories-intro {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px 26px;
+    margin-bottom: 24px;
+  }
+  .preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .preset-btn {
+    background: var(--paper);
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 20px;
+  }
+  .preset-btn:hover { border-color: var(--sage); color: var(--sage); }
+  .preset-btn.active { background: var(--sage); color: white; border-color: var(--sage); }
+
+  .type-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .type-btn {
+    flex: 1;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+  .type-btn:hover { border-color: var(--sienna); }
+  .type-btn.active { background: rgba(181,112,74,0.1); color: var(--sienna); border-color: var(--sienna); }
+
+  .draft-info {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    margin: 14px 0;
+  }
+
+  textarea.prompt-textarea {
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    min-height: 220px;
+    padding: 14px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    resize: vertical;
+  }
+  textarea.prompt-textarea:focus { outline: 2px solid var(--sage); outline-offset: 1px; }
+
+  .story-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px 26px;
+    margin-bottom: 18px;
+  }
+  .story-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .story-card-meta {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+  .story-type-tag {
+    display: inline-block;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 9px;
+    border-radius: 10px;
+    background: var(--paper);
+    color: var(--sienna);
+    margin-right: 8px;
+  }
+  .story-content {
+    font-size: 1rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    margin: 14px 0;
+  }
+  .story-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--rule);
+    border-top-color: var(--sienna);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Statistics / measurements ---------- */
+
+  .measurement-form-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .measurement-form-row .field { flex: 1; min-width: 110px; margin-bottom: 0; }
+  .measurement-form-row button { flex: 0 0 auto; }
+
+  .chart-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px 26px;
+    margin: 24px 0;
+  }
+  .chart-card canvas { max-height: 360px; }
+  .chart-axis-hint {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  .measurement-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+  }
+  .measurement-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .measurement-table td {
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .measurement-table tr:last-child td { border-bottom: none; }
+  .measurement-table .mt-actions { text-align: right; white-space: nowrap; }
+  .mt-delete-btn {
+    background: transparent;
+    color: var(--ink-soft);
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .mt-delete-btn:hover { color: var(--danger); }
+</style>
+
+</head>
+<body>
+
+<div id="app"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+// Relativer Pfad: funktioniert sowohl lokal (Backend liefert das Frontend
+// selbst über Flask aus) als auch online auf derselben Render-Domain.
+// Kein manuelles Umschalten zwischen localhost und Produktions-URL nötig.
+const API = "/api";
+let state = {
+  user: null,
+  view: "loading", // loading | login | guest-register | list | editor | gallery | stories
+  entries: [],
+  currentEntry: null, // entry currently being edited/viewed
+  galleryImages: [],
+  quarters: [],
+  activeQuarter: null, // null = Default (letzte 12 Monate), sonst { year, quarter }
+  pendingImages: [], // images already uploaded for current entry draft
+  loginError: null,
+  loginMode: "parent", // "parent" | "guest" -- nur für die Login-Seite
+  toast: null,
+  lightbox: null, // { images: [...], index: 0, source: 'editor' | 'gallery' }
+  uploadModal: null, // { file, previewUrl }
+  imageEditModal: null, // { imageId, date, caption }
+  generations: [],
+  storyDraft: null, // { periodStart, periodEnd, type, preset, prompt, isLoadingDraft, isGenerating, info }
+  guests: [],
+  newInviteName: "",
+  lastCreatedInvite: null, // { display_name, token } -- nur direkt nach Erstellung gesetzt, zeigt den Link einmalig
+  guestLanding: null, // { token, displayName, error } -- für die ?invite=TOKEN Empfangsseite
+  measurements: [],
+  measurementChart: null, // Chart.js Instanz-Referenz (kein State im React-Sinn, nur Aufbewahrung)
+  guestFeedEntries: [],
+  guestCommentDrafts: {}, // { [entryId]: "aktueller Eingabetext" }
+};
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  render();
+}
+
+function showToast(msg) {
+  setState({ toast: msg });
+  setTimeout(() => setState({ toast: null }), 2500);
+}
+
+// ---------- API helpers ----------
+
+async function apiFetch(path, options = {}) {
+  const res = await fetch(API + path, {
+    credentials: "include",
+    headers: options.body instanceof FormData ? {} : { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    let errMsg = "Ein Fehler ist aufgetreten.";
+    try {
+      const data = await res.json();
+      errMsg = data.error || errMsg;
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ---------- Auth actions ----------
+
+async function checkSession() {
+  try {
+    const user = await apiFetch("/auth/me");
+    setState({ user });
+    if (user.role === "guest") {
+      setState({ view: "guest-feed" });
+      await loadPublishedEntriesForGuest();
+    } else {
+      setState({ view: "list" });
+      await loadEntries();
+    }
+  } catch (_) {
+    setState({ view: "login" });
+  }
+}
+
+async function doLogin(codename) {
+  setState({ loginError: null });
+  try {
+    const user = await apiFetch("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ codename }),
+    });
+    setState({ user, view: "list" });
+    await loadEntries();
+  } catch (e) {
+    setState({ loginError: e.message });
+  }
+}
+
+async function doGuestPinLogin(displayName, pin) {
+  setState({ loginError: null });
+  try {
+    const user = await apiFetch("/auth/guest-login", {
+      method: "POST",
+      body: JSON.stringify({ display_name: displayName, pin }),
+    });
+    setState({ user, view: "list" });
+    if (user.role === "guest") {
+      await loadPublishedEntriesForGuest();
+    } else {
+      await loadEntries();
+    }
+  } catch (e) {
+    setState({ loginError: e.message });
+  }
+}
+
+async function doLogout() {
+  await apiFetch("/auth/logout", { method: "POST" });
+  setState({ user: null, view: "login", entries: [] });
+}
+
+// ---------- Entry actions ----------
+
+async function loadEntries() {
+  const entries = await apiFetch("/entries");
+  setState({ entries });
+}
+
+function openNewEntry() {
+  setState({
+    view: "editor",
+    currentEntry: {
+      id: null,
+      entry_date: new Date().toISOString().slice(0, 10),
+      title: "",
+      text_content: "",
+      images: [],
+    },
+  });
+}
+
+async function openEntry(id) {
+  const entry = await apiFetch(`/entries/${id}`);
+  const comments = await apiFetch(`/entries/${id}/comments`);
+  setState({ view: "editor", currentEntry: { ...entry, comments } });
+}
+
+async function saveEntry() {
+  const e = state.currentEntry;
+  if (!e.title.trim() || !e.text_content.trim()) {
+    showToast("Titel und Text dürfen nicht leer sein.");
+    return;
+  }
+  try {
+    if (e.id) {
+      await apiFetch(`/entries/${e.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          entry_date: e.entry_date,
+          title: e.title,
+          text_content: e.text_content,
+        }),
+      });
+    } else {
+      const created = await apiFetch("/entries", {
+        method: "POST",
+        body: JSON.stringify({
+          entry_date: e.entry_date,
+          title: e.title,
+          text_content: e.text_content,
+        }),
+      });
+      setState({ currentEntry: { ...created, images: [] } });
+    }
+    showToast("Gespeichert.");
+    await loadEntries();
+    setState({ view: "list" });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function deleteEntry(id) {
+  if (!confirm("Diesen Eintrag wirklich löschen? Das kann nicht rückgängig gemacht werden.")) return;
+  try {
+    await apiFetch(`/entries/${id}`, { method: "DELETE" });
+    await loadEntries();
+    setState({ view: "list" });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function togglePublishEntry() {
+  const e = state.currentEntry;
+  const newValue = !e.is_published_for_guests;
+  try {
+    await apiFetch(`/entries/${e.id}/publish`, {
+      method: "PUT",
+      body: JSON.stringify({ is_published_for_guests: newValue }),
+    });
+    setState({ currentEntry: { ...e, is_published_for_guests: newValue } });
+    showToast(newValue ? "Für Gäste freigegeben." : "Freigabe zurückgezogen.");
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function postComment(content) {
+  const e = state.currentEntry;
+  if (!content.trim()) return;
+  try {
+    const comment = await apiFetch(`/entries/${e.id}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content: content.trim() }),
+    });
+    setState({ currentEntry: { ...e, comments: [...(e.comments || []), comment] } });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function deleteComment(commentId) {
+  const e = state.currentEntry;
+  try {
+    await apiFetch(`/comments/${commentId}`, { method: "DELETE" });
+    setState({ currentEntry: { ...e, comments: (e.comments || []).filter((c) => c.id !== commentId) } });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// ---------- Stories (AI generation) ----------
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function presetRange(presetKey) {
+  const today = new Date();
+  let start, end;
+
+  if (presetKey === "this_month") {
+    start = new Date(today.getFullYear(), today.getMonth(), 1);
+    end = today;
+  } else if (presetKey === "last_month") {
+    start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    end = new Date(today.getFullYear(), today.getMonth(), 0);
+  } else if (presetKey === "last_quarter") {
+    const currentQuarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+    start = new Date(today.getFullYear(), currentQuarterStartMonth - 3, 1);
+    end = new Date(today.getFullYear(), currentQuarterStartMonth, 0);
+  } else if (presetKey === "all_time") {
+    start = new Date(2000, 0, 1); // großzügig weit zurück, Backend filtert ohnehin auf existierende Einträge
+    end = today;
+  } else {
+    start = today;
+    end = today;
+  }
+  return { periodStart: isoDate(start), periodEnd: isoDate(end) };
+}
+
+function openStories() {
+  setState({ view: "stories" });
+  loadGenerations();
+}
+
+async function loadGenerations() {
+  const generations = await apiFetch("/ai/generations");
+  setState({ generations });
+}
+
+function selectPreset(presetKey) {
+  const { periodStart, periodEnd } = presetRange(presetKey);
+  setState({
+    storyDraft: {
+      preset: presetKey,
+      periodStart,
+      periodEnd,
+      type: (state.storyDraft && state.storyDraft.type) || "summary",
+      prompt: null,
+      isLoadingDraft: false,
+      isGenerating: false,
+      info: null,
+    },
+  });
+}
+
+function selectCustomRange() {
+  const today = isoDate(new Date());
+  setState({
+    storyDraft: {
+      preset: "custom",
+      periodStart: (state.storyDraft && state.storyDraft.periodStart) || today,
+      periodEnd: (state.storyDraft && state.storyDraft.periodEnd) || today,
+      type: (state.storyDraft && state.storyDraft.type) || "summary",
+      prompt: null,
+      isLoadingDraft: false,
+      isGenerating: false,
+      info: null,
+    },
+  });
+}
+
+function selectType(type) {
+  if (!state.storyDraft) return;
+  setState({ storyDraft: { ...state.storyDraft, type, prompt: null, info: null } });
+}
+
+function updateCustomDate(field, value) {
+  if (!state.storyDraft) return;
+  setState({ storyDraft: { ...state.storyDraft, [field]: value } });
+}
+
+async function requestDraftPrompt() {
+  const sd = state.storyDraft;
+  if (!sd) return;
+  setState({ storyDraft: { ...sd, isLoadingDraft: true } });
+  try {
+    const result = await apiFetch("/ai/draft-prompt", {
+      method: "POST",
+      body: JSON.stringify({
+        period_start: sd.periodStart,
+        period_end: sd.periodEnd,
+        type: sd.type,
+      }),
+    });
+    setState({
+      storyDraft: {
+        ...state.storyDraft,
+        isLoadingDraft: false,
+        prompt: result.prompt,
+        info: { entryCount: result.entry_count, captionCount: result.caption_count, measurementCount: result.measurement_count },
+      },
+    });
+  } catch (err) {
+    setState({ storyDraft: { ...state.storyDraft, isLoadingDraft: false } });
+    showToast(err.message);
+  }
+}
+
+function updateDraftPromptText(value) {
+  if (!state.storyDraft) return;
+  state.storyDraft.prompt = value; // direkt mutieren, kein re-render nötig (Textarea behält Fokus)
+}
+
+async function confirmGenerate() {
+  const sd = state.storyDraft;
+  if (!sd || !sd.prompt) return;
+  setState({ storyDraft: { ...sd, isGenerating: true } });
+  try {
+    await apiFetch("/ai/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        period_start: sd.periodStart,
+        period_end: sd.periodEnd,
+        type: sd.type,
+        prompt: sd.prompt,
+      }),
+    });
+    setState({ storyDraft: null });
+    await loadGenerations();
+    showToast("Geschichte erstellt.");
+  } catch (err) {
+    setState({ storyDraft: { ...state.storyDraft, isGenerating: false } });
+    showToast(err.message);
+  }
+}
+
+function cancelStoryDraft() {
+  setState({ storyDraft: null });
+}
+
+async function toggleGenerationPublish(generationId, newValue) {
+  try {
+    await apiFetch(`/ai/generations/${generationId}/publish`, {
+      method: "PUT",
+      body: JSON.stringify({ is_published: newValue }),
+    });
+    setState({
+      generations: state.generations.map((g) => (g.id === generationId ? { ...g, is_published: newValue } : g)),
+    });
+    showToast(newValue ? "Für Gäste freigegeben." : "Freigabe zurückgezogen.");
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function deleteGeneration(generationId) {
+  if (!confirm("Diese Geschichte wirklich löschen?")) return;
+  try {
+    await apiFetch(`/ai/generations/${generationId}`, { method: "DELETE" });
+    setState({ generations: state.generations.filter((g) => g.id !== generationId) });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// ---------- Guests / invite links ----------
+
+function openGuests() {
+  setState({ view: "guests", lastCreatedInvite: null });
+  loadGuests();
+}
+
+async function loadGuests() {
+  const guests = await apiFetch("/invites");
+  setState({ guests });
+}
+
+async function createInvite(displayName) {
+  if (!displayName.trim()) {
+    showToast("Bitte einen Namen eingeben.");
+    return;
+  }
+  try {
+    const result = await apiFetch("/invites", {
+      method: "POST",
+      body: JSON.stringify({ display_name: displayName.trim() }),
+    });
+
+    const isFileProtocol = window.location.protocol === "file:";
+    // Bei file:// ist location.origin oft "null" (als String) -- dann bauen
+    // wir den Link stattdessen direkt aus href (funktioniert nur lokal auf
+    // diesem Rechner, NICHT zum Versenden an andere Geräte geeignet).
+    const base = isFileProtocol
+      ? window.location.href.split("?")[0]
+      : `${window.location.origin}${window.location.pathname}`;
+    const link = `${base}?invite=${result.token}`;
+
+    setState({
+      lastCreatedInvite: { display_name: result.display_name, link, pin: result.pin, isLocalOnly: isFileProtocol },
+      newInviteName: "",
+    });
+    await loadGuests();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function deleteGuest(userId) {
+  if (!confirm("Diesen Gast wirklich entfernen? Der Einladungslink wird damit ungültig.")) return;
+  try {
+    await apiFetch(`/invites/${userId}`, { method: "DELETE" });
+    setState({ guests: state.guests.filter((g) => g.id !== userId) });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+function copyInviteLink(link) {
+  navigator.clipboard.writeText(link).then(
+    () => showToast("Link kopiert."),
+    () => showToast("Kopieren fehlgeschlagen. Bitte manuell markieren.")
+  );
+}
+
+// ---------- Guest invite landing (via ?invite=TOKEN) ----------
+
+async function checkGuestInviteFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("invite");
+  if (!token) return false;
+
+  setState({ view: "loading" });
+  try {
+    const result = await apiFetch(`/invite/${token}`);
+    setState({ guestLanding: { token, displayName: result.display_name, error: null }, view: "guest-landing" });
+  } catch (err) {
+    setState({ guestLanding: { token, displayName: null, error: err.message }, view: "guest-landing" });
+  }
+  return true;
+}
+
+async function acceptGuestInvite() {
+  const { token } = state.guestLanding;
+  try {
+    const user = await apiFetch(`/invite/${token}/accept`, { method: "POST" });
+    // URL-Parameter entfernen, damit ein Reload nicht erneut die Landing-Page zeigt
+    window.history.replaceState({}, "", window.location.pathname);
+    setState({ user, view: "guest-feed", guestLanding: null });
+    await loadPublishedEntriesForGuest();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// ---------- Statistics (baby measurements) ----------
+
+function openStats() {
+  setState({ view: "stats" });
+  loadMeasurements();
+}
+
+async function loadMeasurements() {
+  const measurements = await apiFetch("/measurements");
+  setState({ measurements });
+}
+
+async function addMeasurement(measurementDate, heightCm, weightKg) {
+  if (!measurementDate) {
+    showToast("Bitte ein Datum angeben.");
+    return;
+  }
+  if (!heightCm && !weightKg) {
+    showToast("Bitte Größe oder Gewicht angeben.");
+    return;
+  }
+  try {
+    await apiFetch("/measurements", {
+      method: "POST",
+      body: JSON.stringify({
+        measurement_date: measurementDate,
+        height_cm: heightCm ? parseFloat(heightCm) : null,
+        weight_kg: weightKg ? parseFloat(weightKg) : null,
+      }),
+    });
+    await loadMeasurements();
+    showToast("Eintrag gespeichert.");
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function deleteMeasurement(id) {
+  if (!confirm("Diesen Messwert wirklich löschen?")) return;
+  try {
+    await apiFetch(`/measurements/${id}`, { method: "DELETE" });
+    setState({ measurements: state.measurements.filter((m) => m.id !== id) });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+function drawMeasurementChart() {
+  const canvas = document.getElementById("measurement-chart");
+  if (!canvas || typeof Chart === "undefined") return;
+
+  if (state.measurementChart) {
+    state.measurementChart.destroy();
+  }
+
+  const sorted = [...state.measurements].sort((a, b) => a.measurement_date.localeCompare(b.measurement_date));
+  const labels = sorted.map((m) => formatDate(m.measurement_date));
+  const weights = sorted.map((m) => m.weight_kg);
+  const heights = sorted.map((m) => m.height_cm);
+
+  const ctx = canvas.getContext("2d");
+  state.measurementChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Gewicht (kg)",
+          data: weights,
+          borderColor: "#B5704A",
+          backgroundColor: "#B5704A",
+          yAxisID: "yWeight",
+          tension: 0.3,
+          spanGaps: true,
+        },
+        {
+          label: "Größe (cm)",
+          data: heights,
+          borderColor: "#7C9885",
+          backgroundColor: "#7C9885",
+          yAxisID: "yHeight",
+          tension: 0.3,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        yWeight: {
+          type: "linear",
+          position: "left",
+          beginAtZero: true,
+          title: { display: true, text: "Gewicht (kg)" },
+        },
+        yHeight: {
+          type: "linear",
+          position: "right",
+          beginAtZero: true,
+          title: { display: true, text: "Größe (cm)" },
+          grid: { drawOnChartArea: false },
+        },
+      },
+    },
+  });
+}
+
+// ---------- Guest feed (published entries + comments) ----------
+
+async function loadPublishedEntriesForGuest() {
+  const entries = await apiFetch("/guest/entries");
+  setState({ guestFeedEntries: entries });
+}
+
+function updateGuestCommentDraft(entryId, value) {
+  state.guestCommentDrafts[entryId] = value; // direkt mutieren, kein re-render nötig (Input behält Fokus)
+}
+
+async function postGuestComment(entryId) {
+  const content = (state.guestCommentDrafts[entryId] || "").trim();
+  if (!content) return;
+  try {
+    const comment = await apiFetch(`/entries/${entryId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+    state.guestCommentDrafts[entryId] = "";
+    setState({
+      guestFeedEntries: state.guestFeedEntries.map((e) =>
+        e.id === entryId ? { ...e, comments: [...(e.comments || []), comment] } : e
+      ),
+    });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function deleteGuestComment(entryId, commentId) {
+  try {
+    await apiFetch(`/comments/${commentId}`, { method: "DELETE" });
+    setState({
+      guestFeedEntries: state.guestFeedEntries.map((e) =>
+        e.id === entryId ? { ...e, comments: (e.comments || []).filter((c) => c.id !== commentId) } : e
+      ),
+    });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// ---------- Image compression ----------
+
+const MAX_IMAGE_DIMENSION = 1600;
+const JPEG_QUALITY = 0.82;
+
+/**
+ * Verkleinert ein Bild client-seitig auf max. MAX_IMAGE_DIMENSION (lange Kante)
+ * und re-encoded als JPEG. Läuft über Canvas, was als Nebeneffekt auch die
+ * EXIF-Rotation von Handyfotos korrekt anwendet (kein "schiefes Bild"-Problem).
+ * Gibt eine neue File zurück, behält den ursprünglichen Dateinamen (mit .jpg).
+ */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    // Nicht-Rasterbilder (z.B. evtl. zukünftig SVG) unverändert durchlassen
+    if (!file.type.startsWith("image/")) {
+      resolve(file);
+      return;
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      let { width, height } = img;
+      if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+        if (width > height) {
+          height = Math.round((height / width) * MAX_IMAGE_DIMENSION);
+          width = MAX_IMAGE_DIMENSION;
+        } else {
+          width = Math.round((width / height) * MAX_IMAGE_DIMENSION);
+          height = MAX_IMAGE_DIMENSION;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file); // Fallback: Original verwenden, falls Encoding fehlschlägt
+            return;
+          }
+          const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+          resolve(new File([blob], newName, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        JPEG_QUALITY
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file); // Fallback: Original verwenden, falls Laden fehlschlägt
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+async function uploadImageForCurrentEntry(rawFile) {
+  const e = state.currentEntry;
+  if (!e.id) {
+    showToast("Bitte zuerst speichern, dann Bilder hinzufügen.");
+    return;
+  }
+  showToast("Bild wird verarbeitet …");
+  const file = await compressImage(rawFile);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("entry_id", e.id);
+  try {
+    const image = await apiFetch("/images", { method: "POST", body: formData });
+    setState({ currentEntry: { ...e, images: [...e.images, image] } });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function removeImage(imageId) {
+  try {
+    await apiFetch(`/images/${imageId}`, { method: "DELETE" });
+    const e = state.currentEntry;
+    setState({ currentEntry: { ...e, images: e.images.filter((i) => i.id !== imageId) } });
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// ---------- Free gallery actions ----------
+
+function quarterDateRange(year, quarter) {
+  const startMonth = (quarter - 1) * 3 + 1;
+  const endMonth = startMonth + 2;
+  const from = `${year}-${String(startMonth).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, endMonth, 0).getDate(); // endMonth ist 1-basiert, Date nimmt 0-basiert -> liefert letzten Tag des Monats
+  const to = `${year}-${String(endMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { from, to };
+}
+
+async function loadGallery() {
+  let url = "/images";
+  if (state.activeQuarter) {
+    const { from, to } = quarterDateRange(state.activeQuarter.year, state.activeQuarter.quarter);
+    url += `?from=${from}&to=${to}`;
+  }
+  const images = await apiFetch(url);
+  setState({ galleryImages: images });
+}
+
+async function loadQuarters() {
+  const quarters = await apiFetch("/images/quarters");
+  setState({ quarters });
+}
+
+async function selectQuarter(year, quarter) {
+  setState({ activeQuarter: year && quarter ? { year, quarter } : null });
+  await loadGallery();
+}
+
+async function uploadFreeImage(rawFile, imageDate, caption) {
+  const file = await compressImage(rawFile);
+  const formData = new FormData();
+  formData.append("file", file);
+  if (imageDate) formData.append("image_date", imageDate);
+  if (caption) formData.append("caption", caption);
+  try {
+    await apiFetch("/images", { method: "POST", body: formData });
+    await loadGallery();
+    await loadQuarters();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+function openUploadModal(file) {
+  const previewUrl = URL.createObjectURL(file);
+  setState({ uploadModal: { file, previewUrl } });
+}
+
+function closeUploadModal() {
+  if (state.uploadModal) URL.revokeObjectURL(state.uploadModal.previewUrl);
+  setState({ uploadModal: null });
+}
+
+async function confirmUploadModal(imageDate, caption) {
+  const { file } = state.uploadModal;
+  closeUploadModal();
+  await uploadFreeImage(file, imageDate || null, caption || null);
+}
+
+async function removeFreeImage(imageId) {
+  try {
+    await apiFetch(`/images/${imageId}`, { method: "DELETE" });
+    setState({ galleryImages: state.galleryImages.filter((i) => i.id !== imageId) });
+    await loadQuarters();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function openGallery() {
+  setState({ view: "gallery", activeQuarter: null });
+  await Promise.all([loadGallery(), loadQuarters()]);
+}
+
+// ---------- Lightbox ----------
+
+function openLightbox(images, startIndex, source) {
+  setState({ lightbox: { images, index: startIndex, source: source || "editor" } });
+  document.addEventListener("keydown", handleLightboxKeydown);
+}
+
+function closeLightbox() {
+  setState({ lightbox: null });
+  document.removeEventListener("keydown", handleLightboxKeydown);
+}
+
+function lightboxNext() {
+  const lb = state.lightbox;
+  if (!lb || lb.index >= lb.images.length - 1) return;
+  setState({ lightbox: { ...lb, index: lb.index + 1 } });
+}
+
+function lightboxPrev() {
+  const lb = state.lightbox;
+  if (!lb || lb.index <= 0) return;
+  setState({ lightbox: { ...lb, index: lb.index - 1 } });
+}
+
+function handleLightboxKeydown(ev) {
+  if (ev.key === "Escape") closeLightbox();
+  if (ev.key === "ArrowRight") lightboxNext();
+  if (ev.key === "ArrowLeft") lightboxPrev();
+}
+
+// ---------- Image editing (from lightbox) ----------
+
+function openImageEditModal() {
+  const lb = state.lightbox;
+  if (!lb) return;
+  const img = lb.images[lb.index];
+  setState({
+    imageEditModal: {
+      imageId: img.id,
+      date: img.effective_date || "",
+      caption: img.caption || "",
+    },
+  });
+}
+
+function closeImageEditModal() {
+  setState({ imageEditModal: null });
+}
+
+async function confirmImageEditModal(date, caption) {
+  const { imageId } = state.imageEditModal;
+  try {
+    const updated = await apiFetch(`/images/${imageId}`, {
+      method: "PUT",
+      body: JSON.stringify({ image_date: date || null, caption: caption || null }),
+    });
+    closeImageEditModal();
+
+    // Lightbox-Bildliste UND zugrunde liegende Liste (Galerie oder Editor) aktualisieren
+    const lb = state.lightbox;
+    const newImages = lb.images.map((img) =>
+      img.id === imageId ? { ...img, ...updated, effective_date: updated.image_date || img.effective_date } : img
+    );
+    setState({ lightbox: { ...lb, images: newImages } });
+
+    if (lb.source === "gallery") {
+      setState({ galleryImages: state.galleryImages.map((img) => (img.id === imageId ? { ...img, ...updated, effective_date: updated.image_date || img.effective_date } : img)) });
+    } else if (state.currentEntry) {
+      setState({ currentEntry: { ...state.currentEntry, images: state.currentEntry.images.map((img) => (img.id === imageId ? { ...img, ...updated } : img)) } });
+    }
+    showToast("Bild aktualisiert.");
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// ---------- Rendering ----------
+
+function render() {
+  const app = document.getElementById("app");
+  if (state.view === "loading") {
+    app.innerHTML = `<div class="center-shell"></div>`;
+    renderLightboxOverlay();
+    renderImageEditModalOverlay();
+    return;
+  }
+  if (state.view === "login") {
+    app.innerHTML = renderLogin();
+    wireLoginEvents();
+    renderLightboxOverlay();
+    renderImageEditModalOverlay();
+    return;
+  }
+  if (state.view === "guest-landing") {
+    app.innerHTML = renderGuestLanding();
+    wireGuestLandingEvents();
+    return;
+  }
+  if (state.view === "list") {
+    app.innerHTML = renderShell(renderList());
+    wireShellEvents();
+    wireListEvents();
+    renderLightboxOverlay();
+    renderImageEditModalOverlay();
+    return;
+  }
+  if (state.view === "editor") {
+    app.innerHTML = renderShell(renderEditor());
+    wireShellEvents();
+    wireEditorEvents();
+    renderLightboxOverlay();
+    renderImageEditModalOverlay();
+    return;
+  }
+  if (state.view === "gallery") {
+    app.innerHTML = renderShell(renderGallery());
+    wireShellEvents();
+    wireGalleryEvents();
+    renderLightboxOverlay();
+    renderImageEditModalOverlay();
+    renderUploadModalOverlay();
+    return;
+  }
+  if (state.view === "stories") {
+    app.innerHTML = renderShell(renderStories());
+    wireShellEvents();
+    wireStoriesEvents();
+    return;
+  }
+  if (state.view === "guests") {
+    app.innerHTML = renderShell(renderGuests());
+    wireShellEvents();
+    wireGuestsEvents();
+    return;
+  }
+  if (state.view === "stats") {
+    app.innerHTML = renderShell(renderStats());
+    wireShellEvents();
+    wireStatsEvents();
+    drawMeasurementChart();
+    return;
+  }
+  if (state.view === "guest-feed") {
+    app.innerHTML = renderShell(renderGuestFeed());
+    wireShellEvents();
+    wireGuestFeedEvents();
+    renderLightboxOverlay();
+    return;
+  }
+}
+
+function renderLightboxOverlay() {
+  const existing = document.querySelector(".lightbox-overlay");
+  if (existing) existing.remove();
+  if (!state.lightbox) return;
+
+  const { images, index } = state.lightbox;
+  const img = images[index];
+  if (!img) return;
+
+  const isParent = state.user && (state.user.role === "parent_father" || state.user.role === "parent_mother");
+
+  const el = document.createElement("div");
+  el.className = "lightbox-overlay";
+  el.innerHTML = `
+    <button class="lightbox-close" aria-label="Schließen">&times;</button>
+    ${isParent ? `<button class="lightbox-edit" aria-label="Bild bearbeiten">Bearbeiten</button>` : ""}
+    <button class="lightbox-nav prev" aria-label="Vorheriges Bild" ${index === 0 ? "disabled" : ""}>&#8249;</button>
+    <div class="lightbox-img-wrap">
+      <img src="${img.url || ''}" alt="${escapeAttr(img.caption || '')}">
+      ${img.effective_date || img.caption ? `
+        <div class="lightbox-caption ui">
+          ${img.effective_date ? formatDate(img.effective_date) : ""}${img.caption ? " &middot; " + escapeHtml(img.caption) : ""}
+        </div>
+      ` : ""}
+    </div>
+    <button class="lightbox-nav next" aria-label="Nächstes Bild" ${index === images.length - 1 ? "disabled" : ""}>&#8250;</button>
+    ${images.length > 1 ? `<div class="lightbox-counter ui">${index + 1} / ${images.length}</div>` : ""}
+  `;
+  document.body.appendChild(el);
+
+  el.querySelector(".lightbox-close").addEventListener("click", closeLightbox);
+  el.querySelector(".lightbox-edit")?.addEventListener("click", openImageEditModal);
+  el.querySelector(".lightbox-nav.prev").addEventListener("click", lightboxPrev);
+  el.querySelector(".lightbox-nav.next").addEventListener("click", lightboxNext);
+  el.addEventListener("click", (ev) => { if (ev.target === el) closeLightbox(); });
+}
+
+function renderImageEditModalOverlay() {
+  const existing = document.querySelector(".image-edit-modal-overlay");
+  if (existing) existing.remove();
+  if (!state.imageEditModal) return;
+
+  const { date, caption } = state.imageEditModal;
+
+  const el = document.createElement("div");
+  el.className = "modal-overlay image-edit-modal-overlay";
+  el.style.zIndex = "250"; // über der Lightbox (200)
+  el.innerHTML = `
+    <div class="modal-card ui">
+      <h3>Bild bearbeiten</h3>
+      <div class="field">
+        <label for="edit-img-date">Datum</label>
+        <input type="date" id="edit-img-date" value="${date}">
+      </div>
+      <div class="field">
+        <label for="edit-img-caption">Überschrift (optional)</label>
+        <input type="text" id="edit-img-caption" maxlength="60" value="${escapeAttr(caption)}" placeholder="z.B. Erster Ultraschall">
+      </div>
+      <div class="char-counter"><span id="edit-img-char-count">${caption.length}</span>/60</div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="edit-img-cancel">Abbrechen</button>
+        <button class="btn-primary" id="edit-img-confirm">Speichern</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+
+  const captionInput = el.querySelector("#edit-img-caption");
+  const counter = el.querySelector("#edit-img-char-count");
+  captionInput.addEventListener("input", () => { counter.textContent = captionInput.value.length; });
+
+  el.querySelector("#edit-img-cancel").addEventListener("click", closeImageEditModal);
+  el.addEventListener("click", (ev) => { if (ev.target === el) closeImageEditModal(); });
+  el.querySelector("#edit-img-confirm").addEventListener("click", () => {
+    const newDate = el.querySelector("#edit-img-date").value;
+    const newCaption = captionInput.value.trim();
+    confirmImageEditModal(newDate, newCaption);
+  });
+}
+
+function renderUploadModalOverlay() {
+  const existing = document.querySelector(".modal-overlay");
+  if (existing) existing.remove();
+  if (!state.uploadModal) return;
+
+  const { previewUrl } = state.uploadModal;
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const el = document.createElement("div");
+  el.className = "modal-overlay";
+  el.innerHTML = `
+    <div class="modal-card ui">
+      <h3>Bild hinzufügen</h3>
+      <img class="modal-preview" src="${previewUrl}" alt="Vorschau">
+      <div class="field">
+        <label for="modal-date">Datum</label>
+        <input type="date" id="modal-date" value="${todayIso}">
+      </div>
+      <div class="field">
+        <label for="modal-caption">Überschrift (optional)</label>
+        <input type="text" id="modal-caption" maxlength="60" placeholder="z.B. Erster Ultraschall">
+      </div>
+      <div class="char-counter"><span id="modal-char-count">0</span>/60</div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="modal-cancel">Abbrechen</button>
+        <button class="btn-primary" id="modal-confirm">Hochladen</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+
+  const captionInput = el.querySelector("#modal-caption");
+  const counter = el.querySelector("#modal-char-count");
+  captionInput.addEventListener("input", () => { counter.textContent = captionInput.value.length; });
+
+  el.querySelector("#modal-cancel").addEventListener("click", closeUploadModal);
+  el.addEventListener("click", (ev) => { if (ev.target === el) closeUploadModal(); });
+  el.querySelector("#modal-confirm").addEventListener("click", () => {
+    const date = el.querySelector("#modal-date").value;
+    const caption = captionInput.value.trim();
+    confirmUploadModal(date, caption);
+  });
+}
+
+function renderLogin() {
+  const isGuestMode = state.loginMode === "guest";
+
+  return `
+    <div class="center-shell">
+      <div class="login-card ui">
+        <h1>Logbuch</h1>
+        <p class="sub">Euer gemeinsames Tagebuch.</p>
+        <div class="nav-tabs" style="margin-bottom:20px; background:var(--paper); border-radius:8px; padding:4px;">
+          <button id="login-mode-parent" class="${!isGuestMode ? "active" : ""}" style="flex:1;">Familie</button>
+          <button id="login-mode-guest" class="${isGuestMode ? "active" : ""}" style="flex:1;">Gast</button>
+        </div>
+        ${state.loginError ? `<p class="error-msg">${escapeHtml(state.loginError)}</p>` : ""}
+        ${!isGuestMode ? `
+          <div class="field">
+            <label for="codename">Codename</label>
+            <input type="text" id="codename" autocomplete="off" placeholder="Dein Codename">
+          </div>
+          <button class="btn-primary" id="login-btn">Anmelden</button>
+        ` : `
+          <p class="sub" style="margin-bottom:18px;">Melde dich mit deinem Namen und deiner PIN an (beides hast du von der Familie erhalten).</p>
+          <div class="field">
+            <label for="guest-name">Name</label>
+            <input type="text" id="guest-name" autocomplete="off" placeholder="z.B. Oma Hilde">
+          </div>
+          <div class="field">
+            <label for="guest-pin">PIN</label>
+            <input type="text" id="guest-pin" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="4-stellige PIN">
+          </div>
+          <button class="btn-primary" id="guest-login-btn">Anmelden</button>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function wireLoginEvents() {
+  document.getElementById("login-mode-parent").addEventListener("click", () => setState({ loginMode: "parent", loginError: null }));
+  document.getElementById("login-mode-guest").addEventListener("click", () => setState({ loginMode: "guest", loginError: null }));
+
+  if (state.loginMode === "guest") {
+    const guestBtn = document.getElementById("guest-login-btn");
+    const nameInput = document.getElementById("guest-name");
+    const pinInput = document.getElementById("guest-pin");
+    const submit = () => doGuestPinLogin(nameInput.value, pinInput.value);
+    guestBtn.addEventListener("click", submit);
+    pinInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+    return;
+  }
+
+  const btn = document.getElementById("login-btn");
+  const input = document.getElementById("codename");
+  btn.addEventListener("click", () => doLogin(input.value));
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(input.value); });
+}
+
+function renderGuestLanding() {
+  const gl = state.guestLanding;
+  if (!gl) return "";
+
+  if (gl.error) {
+    return `
+      <div class="center-shell">
+        <div class="login-card ui">
+          <h1>Link ungültig</h1>
+          <p class="sub">${escapeHtml(gl.error)} Bitte wende dich an die Person, die dir den Link geschickt hat.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="center-shell">
+      <div class="login-card ui">
+        <h1>Willkommen, ${escapeHtml(gl.displayName)}!</h1>
+        <p class="sub">Du wurdest zum gemeinsamen Logbuch eingeladen. Mit einem Klick bist du dabei.</p>
+        <button class="btn-primary" id="accept-invite-btn">Das bin ich, weiter</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireGuestLandingEvents() {
+  document.getElementById("accept-invite-btn")?.addEventListener("click", acceptGuestInvite);
+}
+
+function renderShell(innerHtml) {
+  const isParent = state.user.role === "parent_father" || state.user.role === "parent_mother";
+
+  const isList = state.view === "list" || state.view === "editor";
+  const isGallery = state.view === "gallery";
+  const isStories = state.view === "stories";
+  const isGuests = state.view === "guests";
+  const isStats = state.view === "stats";
+  const isGuestFeed = state.view === "guest-feed";
+
+  const tabs = isParent ? `
+    <button id="nav-entries" class="${isList ? "active" : ""}">Einträge</button>
+    <button id="nav-gallery" class="${isGallery ? "active" : ""}">Galerie</button>
+    <button id="nav-stories" class="${isStories ? "active" : ""}">Geschichten</button>
+    <button id="nav-stats" class="${isStats ? "active" : ""}">Statistik</button>
+    <button id="nav-guests" class="${isGuests ? "active" : ""}">Gäste</button>
+  ` : `
+    <button id="nav-guest-feed" class="${isGuestFeed ? "active" : ""}">Tagebuch</button>
+    <button id="nav-gallery" class="${isGallery ? "active" : ""}">Galerie</button>
+    <button id="nav-stats" class="${isStats ? "active" : ""}">Statistik</button>
+  `;
+
+  return `
+    <div class="topbar ui">
+      <div class="brand"><span class="mark">&#9670;</span> Logbuch</div>
+      <div class="nav-tabs">${tabs}</div>
+      <div class="topbar-right">
+        <span>${escapeHtml(state.user.display_name)}</span>
+        <button class="btn-secondary" id="logout-btn">Abmelden</button>
+      </div>
+    </div>
+    <main>${innerHtml}</main>
+  `;
+}
+
+function wireShellEvents() {
+  document.getElementById("logout-btn").addEventListener("click", doLogout);
+  document.getElementById("nav-entries")?.addEventListener("click", async () => {
+    setState({ view: "list" });
+    await loadEntries();
+  });
+  document.getElementById("nav-gallery")?.addEventListener("click", openGallery);
+  document.getElementById("nav-stories")?.addEventListener("click", openStories);
+  document.getElementById("nav-stats")?.addEventListener("click", openStats);
+  document.getElementById("nav-guests")?.addEventListener("click", openGuests);
+  document.getElementById("nav-guest-feed")?.addEventListener("click", async () => {
+    setState({ view: "guest-feed" });
+    await loadPublishedEntriesForGuest();
+  });
+}
+
+function renderList() {
+  if (state.entries.length === 0) {
+    return `
+      <div class="empty-state">
+        <span class="mark">&#9670;</span>
+        <p>Noch keine Einträge. Der erste Satz ist immer der schwerste &mdash; leg einfach los.</p>
+      </div>
+      <button class="fab" id="new-entry-fab" aria-label="Neuer Eintrag">+</button>
+    `;
+  }
+
+  const cards = state.entries.map((e) => {
+    const preview = e.text_content.length > 140 ? e.text_content.slice(0, 140) + "…" : e.text_content;
+    const thumbs = (e.images || []).slice(0, 4).map((img) =>
+      `<img src="${img.url || ''}" alt="" loading="lazy">`
+    ).join("");
+    const commentBadge = e.comment_count > 0
+      ? `<span class="comment-badge" title="${e.comment_count} Kommentar(e)">&#128172; ${e.comment_count}</span>`
+      : "";
+    const publishedBadge = e.is_published_for_guests
+      ? `<span class="published-badge" title="Für Gäste freigegeben">&#9670; freigegeben</span>`
+      : "";
+    return `
+      <div class="entry-card" data-id="${e.id}">
+        <div class="entry-date-row">
+          <span class="entry-date">${formatDate(e.entry_date)}</span>
+          ${commentBadge}${publishedBadge}
+        </div>
+        <h3>${escapeHtml(e.title)}</h3>
+        <p class="entry-preview">${escapeHtml(preview)}</p>
+        ${thumbs ? `<div class="entry-thumbs">${thumbs}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="section-head">
+      <h2>Eure Einträge</h2>
+    </div>
+    ${cards}
+    <button class="fab" id="new-entry-fab" aria-label="Neuer Eintrag">+</button>
+  `;
+}
+
+function wireListEvents() {
+  document.getElementById("new-entry-fab").addEventListener("click", openNewEntry);
+  document.querySelectorAll(".entry-card").forEach((card) => {
+    card.addEventListener("click", () => openEntry(card.dataset.id));
+  });
+}
+
+function renderEditor() {
+  const e = state.currentEntry;
+  const imgGrid = (e.images || []).map((img, idx) => `
+    <div class="thumb-wrap" data-img-id="${img.id}">
+      <img src="${img.url || ''}" alt="" data-open-lightbox="${idx}">
+      <button class="remove-thumb" data-remove-img="${img.id}" aria-label="Bild entfernen">&times;</button>
+    </div>
+  `).join("");
+
+  const comments = (e.comments || []).map((c) => `
+    <div class="comment-item">
+      <div class="comment-meta">
+        <span class="comment-author">${escapeHtml(c.author_name)}</span>
+        <span class="comment-date">${formatDateTime(c.created_at)}</span>
+      </div>
+      <p class="comment-content">${escapeHtml(c.content)}</p>
+      <button class="comment-delete" data-delete-comment="${c.id}" aria-label="Kommentar löschen">&times;</button>
+    </div>
+  `).join("");
+
+  return `
+    <div class="editor-card">
+      <input type="text" class="title-input" id="edit-title" placeholder="Titel des Eintrags" value="${escapeAttr(e.title)}">
+      <textarea class="body-input" id="edit-body" placeholder="Was ist heute passiert?">${escapeHtml(e.text_content)}</textarea>
+
+      <div class="editor-meta-row">
+        <div class="field">
+          <label for="edit-date">Datum</label>
+          <input type="date" id="edit-date" value="${e.entry_date}">
+        </div>
+        ${e.id ? `
+          <div class="field publish-toggle-field">
+            <label>Für Gäste</label>
+            <button class="publish-toggle ${e.is_published_for_guests ? "active" : ""}" id="publish-toggle-btn" type="button">
+              ${e.is_published_for_guests ? "Freigegeben ✓" : "Nicht freigegeben"}
+            </button>
+          </div>
+        ` : ""}
+      </div>
+
+      ${e.id ? `
+        <div class="image-grid">${imgGrid}</div>
+        <label class="upload-zone" for="img-upload">
+          Bild hinzufügen (klicken oder hier ablegen)
+          <input type="file" id="img-upload" accept="image/png,image/jpeg,image/webp,image/gif">
+        </label>
+      ` : `
+        <p class="ui" style="font-size:0.85rem;color:var(--ink-soft);margin-top:18px;">
+          Speichere den Eintrag zuerst, dann kannst du Bilder hinzufügen.
+        </p>
+      `}
+
+      ${e.id ? `
+        <div class="comments-section">
+          <h4 class="comments-heading">Kommentare ${e.comments && e.comments.length ? `(${e.comments.length})` : ""}</h4>
+          ${comments || `<p class="comments-empty ui">Noch keine Kommentare.</p>`}
+          <div class="comment-form">
+            <input type="text" id="new-comment-input" placeholder="Kommentar schreiben …" maxlength="1000">
+            <button class="btn-secondary" id="post-comment-btn">Senden</button>
+          </div>
+        </div>
+      ` : ""}
+
+      <div class="editor-actions">
+        <div>
+          ${e.id ? `<button class="btn-danger" id="delete-entry-btn">Eintrag löschen</button>` : ""}
+        </div>
+        <div class="editor-actions-right">
+          <button class="btn-secondary" id="cancel-edit-btn">Zurück</button>
+          <button class="btn-primary" id="save-entry-btn">Speichern</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function wireEditorEvents() {
+  const e = state.currentEntry;
+
+  document.getElementById("edit-title").addEventListener("input", (ev) => {
+    state.currentEntry.title = ev.target.value;
+  });
+  document.getElementById("edit-body").addEventListener("input", (ev) => {
+    state.currentEntry.text_content = ev.target.value;
+  });
+  document.getElementById("edit-date").addEventListener("input", (ev) => {
+    state.currentEntry.entry_date = ev.target.value;
+  });
+
+  document.getElementById("save-entry-btn").addEventListener("click", saveEntry);
+  document.getElementById("cancel-edit-btn").addEventListener("click", () => setState({ view: "list" }));
+
+  if (e.id) {
+    document.getElementById("delete-entry-btn")?.addEventListener("click", () => deleteEntry(e.id));
+    document.getElementById("img-upload")?.addEventListener("change", (ev) => {
+      const file = ev.target.files[0];
+      if (file) uploadImageForCurrentEntry(file);
+    });
+    document.querySelectorAll("[data-remove-img]").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        removeImage(btn.dataset.removeImg);
+      });
+    });
+    document.querySelectorAll("[data-open-lightbox]").forEach((thumb) => {
+      thumb.addEventListener("click", () => {
+        const idx = parseInt(thumb.dataset.openLightbox, 10);
+        const imagesWithDate = (e.images || []).map((img) => ({ ...img, effective_date: e.entry_date }));
+        openLightbox(imagesWithDate, idx, "editor");
+      });
+    });
+
+    document.getElementById("publish-toggle-btn")?.addEventListener("click", togglePublishEntry);
+
+    const commentInput = document.getElementById("new-comment-input");
+    const postCommentBtn = document.getElementById("post-comment-btn");
+    const submitComment = () => {
+      const value = commentInput.value;
+      if (!value.trim()) return;
+      postComment(value);
+      commentInput.value = "";
+    };
+    postCommentBtn?.addEventListener("click", submitComment);
+    commentInput?.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") submitComment();
+    });
+    document.querySelectorAll("[data-delete-comment]").forEach((btn) => {
+      btn.addEventListener("click", () => deleteComment(btn.dataset.deleteComment));
+    });
+  }
+}
+
+function renderGallery() {
+  const isParent = state.user.role === "parent_father" || state.user.role === "parent_mother";
+
+  const tiles = state.galleryImages.map((img, idx) => `
+    <div>
+      <div class="gallery-item" data-img-id="${img.id}">
+        <img src="${img.url || ''}" alt="${escapeAttr(img.caption || '')}" loading="lazy" data-open-gallery-lightbox="${idx}">
+        ${isParent ? `<button class="gallery-remove" data-remove-gallery-img="${img.id}" aria-label="Bild entfernen">&times;</button>` : ""}
+      </div>
+      ${img.effective_date ? `<div class="gallery-item-date ui">${formatDate(img.effective_date)}</div>` : ""}
+    </div>
+  `).join("");
+
+  const quarterButtons = state.quarters.map((q) => {
+    const isActive = state.activeQuarter && state.activeQuarter.year === q.year && state.activeQuarter.quarter === q.quarter;
+    return `
+      <button class="${isActive ? "active" : ""}" data-quarter-year="${q.year}" data-quarter-q="${q.quarter}">
+        ${q.label} <span class="qs-count">(${q.count})</span>
+      </button>
+    `;
+  }).join("");
+
+  const emptyState = state.galleryImages.length === 0 ? `
+    <div class="empty-state">
+      <span class="mark">&#9670;</span>
+      <p>${state.activeQuarter ? "Keine Bilder in diesem Quartal." : "Noch keine Bilder hier."}</p>
+    </div>
+  ` : "";
+
+  const uploadTile = isParent ? `
+    <div>
+      <label class="gallery-upload-tile" for="gallery-upload">
+        <span class="plus">+</span>
+        <span>Bild hinzufügen</span>
+        <input type="file" id="gallery-upload" accept="image/png,image/jpeg,image/webp,image/gif">
+      </label>
+    </div>
+  ` : "";
+
+  return `
+    <div class="section-head">
+      <h2>Galerie</h2>
+    </div>
+    <div class="gallery-layout">
+      <div>
+        <div class="gallery-grid">
+          ${uploadTile}
+          ${tiles}
+        </div>
+        ${emptyState}
+      </div>
+      <div class="quarter-sidebar">
+        <div class="qs-label">Zeitraum</div>
+        <button class="${!state.activeQuarter ? "active" : ""}" data-quarter-all="true">Letzte 12 Monate</button>
+        ${quarterButtons}
+      </div>
+    </div>
+  `;
+}
+
+function wireGalleryEvents() {
+  document.getElementById("gallery-upload")?.addEventListener("change", (ev) => {
+    const file = ev.target.files[0];
+    if (file) openUploadModal(file);
+    ev.target.value = "";
+  });
+  document.querySelectorAll("[data-remove-gallery-img]").forEach((btn) => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      removeFreeImage(btn.dataset.removeGalleryImg);
+    });
+  });
+  document.querySelectorAll("[data-open-gallery-lightbox]").forEach((thumb) => {
+    thumb.addEventListener("click", () => {
+      const idx = parseInt(thumb.dataset.openGalleryLightbox, 10);
+      openLightbox(state.galleryImages, idx, "gallery");
+    });
+  });
+  document.querySelector("[data-quarter-all]").addEventListener("click", () => selectQuarter(null, null));
+  document.querySelectorAll("[data-quarter-year]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectQuarter(parseInt(btn.dataset.quarterYear, 10), parseInt(btn.dataset.quarterQ, 10));
+    });
+  });
+}
+
+function renderStories() {
+  const sd = state.storyDraft;
+
+  const presetButtons = [
+    { key: "this_month", label: "Dieser Monat" },
+    { key: "last_month", label: "Letzter Monat" },
+    { key: "last_quarter", label: "Letztes Quartal" },
+    { key: "all_time", label: "Ganze Schwangerschaft bisher" },
+  ].map((p) => `
+    <button class="preset-btn ${sd && sd.preset === p.key ? "active" : ""}" data-preset="${p.key}">${p.label}</button>
+  `).join("");
+
+  const draftSection = sd ? `
+    <div class="stories-intro">
+      <h3 style="margin-top:0;">Neue Geschichte erstellen</h3>
+      <div class="preset-row">
+        ${presetButtons}
+        <button class="preset-btn ${sd.preset === "custom" ? "active" : ""}" data-preset="custom">Eigener Zeitraum</button>
+      </div>
+
+      ${sd.preset === "custom" ? `
+        <div class="editor-meta-row" style="margin-top:0;border-top:none;padding-top:0;">
+          <div class="field">
+            <label for="draft-start">Von</label>
+            <input type="date" id="draft-start" value="${sd.periodStart}">
+          </div>
+          <div class="field">
+            <label for="draft-end">Bis</label>
+            <input type="date" id="draft-end" value="${sd.periodEnd}">
+          </div>
+        </div>
+      ` : `
+        <p class="draft-info">Zeitraum: ${formatDate(sd.periodStart)} bis ${formatDate(sd.periodEnd)}</p>
+      `}
+
+      <div class="type-row">
+        <button class="type-btn ${sd.type === "summary" ? "active" : ""}" data-type="summary">Zusammenfassung</button>
+        <button class="type-btn ${sd.type === "story" ? "active" : ""}" data-type="story">Geschichte</button>
+      </div>
+
+      ${!sd.prompt ? `
+        <button class="btn-primary" id="draft-prompt-btn" ${sd.isLoadingDraft ? "disabled" : ""}>
+          ${sd.isLoadingDraft ? '<span class="spinner"></span> Lädt Daten …' : "Prompt-Entwurf erstellen"}
+        </button>
+        <button class="btn-secondary" id="cancel-draft-btn" style="margin-left:8px;">Abbrechen</button>
+      ` : `
+        <p class="draft-info">
+          ${sd.info.entryCount} Eintrag/Einträge, ${sd.info.captionCount} Bildunterschrift(en), ${sd.info.measurementCount} Messung(en) gefunden.
+          Du kannst den Prompt unten frei anpassen, bevor du ihn abschickst.
+        </p>
+        <textarea class="prompt-textarea" id="prompt-textarea">${escapeHtml(sd.prompt)}</textarea>
+        <div style="margin-top:14px;">
+          <button class="btn-primary" id="confirm-generate-btn" ${sd.isGenerating ? "disabled" : ""}>
+            ${sd.isGenerating ? '<span class="spinner"></span> Wird erstellt …' : "Geschichte generieren"}
+          </button>
+          <button class="btn-secondary" id="cancel-draft-btn" style="margin-left:8px;">Abbrechen</button>
+        </div>
+      `}
+    </div>
+  ` : `
+    <div class="stories-intro">
+      <h3 style="margin-top:0;">Neue Geschichte erstellen</h3>
+      <div class="preset-row">
+        ${presetButtons}
+        <button class="preset-btn" data-preset="custom">Eigener Zeitraum</button>
+      </div>
+    </div>
+  `;
+
+  const generationCards = state.generations.map((g) => `
+    <div class="story-card">
+      <div class="story-card-header">
+        <div>
+          <span class="story-type-tag">${g.type === "story" ? "Geschichte" : "Zusammenfassung"}</span>
+          <span class="story-card-meta">${formatDate(g.period_start)} – ${formatDate(g.period_end)}</span>
+        </div>
+      </div>
+      <div class="story-content">${escapeHtml(g.content)}</div>
+      <div class="story-actions">
+        <button class="publish-toggle ${g.is_published ? "active" : ""}" data-toggle-publish="${g.id}" data-current="${g.is_published}">
+          ${g.is_published ? "Freigegeben ✓" : "Nicht freigegeben"}
+        </button>
+        <button class="btn-danger" data-delete-generation="${g.id}">Löschen</button>
+      </div>
+    </div>
+  `).join("");
+
+  const emptyGenerations = state.generations.length === 0 ? `
+    <div class="empty-state">
+      <span class="mark">&#9670;</span>
+      <p>Noch keine Geschichten erstellt. Wähle oben einen Zeitraum, um zu starten.</p>
+    </div>
+  ` : "";
+
+  return `
+    <div class="section-head">
+      <h2>Geschichten</h2>
+    </div>
+    ${draftSection}
+    ${generationCards}
+    ${emptyGenerations}
+  `;
+}
+
+function wireStoriesEvents() {
+  document.querySelectorAll("[data-preset]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.preset;
+      if (key === "custom") selectCustomRange();
+      else selectPreset(key);
+    });
+  });
+
+  document.getElementById("draft-start")?.addEventListener("input", (ev) => updateCustomDate("periodStart", ev.target.value));
+  document.getElementById("draft-end")?.addEventListener("input", (ev) => updateCustomDate("periodEnd", ev.target.value));
+
+  document.querySelectorAll("[data-type]").forEach((btn) => {
+    btn.addEventListener("click", () => selectType(btn.dataset.type));
+  });
+
+  document.getElementById("draft-prompt-btn")?.addEventListener("click", requestDraftPrompt);
+  document.getElementById("cancel-draft-btn")?.addEventListener("click", cancelStoryDraft);
+  document.getElementById("confirm-generate-btn")?.addEventListener("click", confirmGenerate);
+  document.getElementById("prompt-textarea")?.addEventListener("input", (ev) => updateDraftPromptText(ev.target.value));
+
+  document.querySelectorAll("[data-toggle-publish]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const current = btn.dataset.current === "true";
+      toggleGenerationPublish(btn.dataset.togglePublish, !current);
+    });
+  });
+  document.querySelectorAll("[data-delete-generation]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteGeneration(btn.dataset.deleteGeneration));
+  });
+}
+
+function renderGuests() {
+  const newLinkBlock = state.lastCreatedInvite ? `
+    <div class="stories-intro" style="border-color: var(--sage);">
+      <h3 style="margin-top:0;">Link für ${escapeHtml(state.lastCreatedInvite.display_name)} erstellt</h3>
+      ${state.lastCreatedInvite.isLocalOnly ? `
+        <p class="error-msg" style="margin-top:0;">
+          ⚠️ Du öffnest diese Seite gerade lokal als Datei (file://). Dieser Link funktioniert
+          deshalb nur auf diesem Rechner und kann NICHT an andere Personen verschickt werden.
+          Damit Gäste von ihrem eigenen Gerät aus zugreifen können, muss die App online gehostet werden.
+        </p>
+      ` : `
+        <p class="draft-info" style="margin-top:0;">Diesen Link einmalig kopieren und versenden (z.B. per WhatsApp):</p>
+      `}
+      <div style="display:flex; gap:8px;">
+        <input type="text" readonly value="${escapeAttr(state.lastCreatedInvite.link)}" style="flex:1;" id="invite-link-display">
+        <button class="btn-primary" id="copy-invite-link-btn">Kopieren</button>
+      </div>
+      <p class="draft-info" style="margin-bottom:4px;">
+        Falls der Link verloren geht, kann sich ${escapeHtml(state.lastCreatedInvite.display_name)} auch jederzeit
+        über "Gast" auf der Login-Seite mit Name + dieser PIN erneut anmelden:
+      </p>
+      <p style="font-size:1.4rem; font-weight:700; letter-spacing:0.1em; color:var(--sienna); margin:4px 0 0;">
+        ${escapeHtml(state.lastCreatedInvite.pin)}
+      </p>
+      <p class="draft-info" style="margin-top:6px;">
+        ⚠️ Diese PIN wird nur jetzt angezeigt und kann später nicht erneut abgerufen werden. Notiere sie dir.
+      </p>
+    </div>
+  ` : "";
+
+  const guestRows = state.guests.map((g) => `
+    <div class="entry-card" style="cursor:default;">
+      <h3 style="margin-bottom:4px;">${escapeHtml(g.display_name)}</h3>
+      <p class="entry-preview" style="margin-bottom:10px;">Eingeladen am ${formatDate(g.created_at.slice(0, 10))}</p>
+      <button class="btn-danger" data-delete-guest="${g.id}">Entfernen</button>
+    </div>
+  `).join("");
+
+  const emptyState = state.guests.length === 0 ? `
+    <div class="empty-state">
+      <span class="mark">&#9670;</span>
+      <p>Noch keine Gäste eingeladen.</p>
+    </div>
+  ` : "";
+
+  return `
+    <div class="section-head">
+      <h2>Gäste</h2>
+    </div>
+    ${newLinkBlock}
+    <div class="stories-intro">
+      <h3 style="margin-top:0;">Neue Einladung erstellen</h3>
+      <div class="measurement-form-row">
+        <div class="field" style="margin-bottom:0;">
+          <label for="new-invite-name">Name</label>
+          <input type="text" id="new-invite-name" placeholder="z.B. Oma Helga" value="${escapeAttr(state.newInviteName)}">
+        </div>
+        <button class="btn-primary" id="create-invite-btn">Link erstellen</button>
+      </div>
+    </div>
+    ${guestRows}
+    ${emptyState}
+  `;
+}
+
+function wireGuestsEvents() {
+  const nameInput = document.getElementById("new-invite-name");
+  nameInput.addEventListener("input", (ev) => { state.newInviteName = ev.target.value; });
+
+  document.getElementById("create-invite-btn").addEventListener("click", () => {
+    createInvite(nameInput.value);
+  });
+  nameInput.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") createInvite(nameInput.value);
+  });
+
+  document.getElementById("copy-invite-link-btn")?.addEventListener("click", () => {
+    copyInviteLink(state.lastCreatedInvite.link);
+  });
+
+  document.querySelectorAll("[data-delete-guest]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteGuest(btn.dataset.deleteGuest));
+  });
+}
+
+function renderStats() {
+  const today = isoDate(new Date());
+  const isParent = state.user.role === "parent_father" || state.user.role === "parent_mother";
+
+  const rows = [...state.measurements]
+    .sort((a, b) => b.measurement_date.localeCompare(a.measurement_date))
+    .map((m) => `
+      <tr>
+        <td>${formatDate(m.measurement_date)}</td>
+        <td>${m.height_cm != null ? m.height_cm + " cm" : "–"}</td>
+        <td>${m.weight_kg != null ? m.weight_kg + " kg" : "–"}</td>
+        ${isParent ? `
+          <td class="mt-actions">
+            <button class="mt-delete-btn" data-delete-measurement="${m.id}" aria-label="Löschen">&times;</button>
+          </td>
+        ` : ""}
+      </tr>
+    `).join("");
+
+  const tableOrEmpty = state.measurements.length > 0 ? `
+    <table class="measurement-table">
+      <thead>
+        <tr><th>Datum</th><th>Größe</th><th>Gewicht</th>${isParent ? "<th></th>" : ""}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  ` : `
+    <div class="empty-state">
+      <span class="mark">&#9670;</span>
+      <p>Noch keine Werte erfasst.</p>
+    </div>
+  `;
+
+  const chartSection = state.measurements.length > 0 ? `
+    <div class="chart-card">
+      <canvas id="measurement-chart"></canvas>
+      <p class="chart-axis-hint">Linke Achse: Gewicht (kg) &middot; Rechte Achse: Größe (cm) &middot; beide beginnen bei 0</p>
+    </div>
+  ` : "";
+
+  const formSection = isParent ? `
+    <div class="stories-intro">
+      <h3 style="margin-top:0;">Neuen Wert eintragen</h3>
+      <div class="measurement-form-row">
+        <div class="field">
+          <label for="m-date">Datum</label>
+          <input type="date" id="m-date" value="${today}">
+        </div>
+        <div class="field">
+          <label for="m-height">Größe (cm)</label>
+          <input type="text" id="m-height" inputmode="decimal" placeholder="z.B. 52.5">
+        </div>
+        <div class="field">
+          <label for="m-weight">Gewicht (kg)</label>
+          <input type="text" id="m-weight" inputmode="decimal" placeholder="z.B. 3.45">
+        </div>
+        <button class="btn-primary" id="add-measurement-btn">Speichern</button>
+      </div>
+    </div>
+  ` : "";
+
+  return `
+    <div class="section-head">
+      <h2>Statistik</h2>
+    </div>
+    ${formSection}
+    ${chartSection}
+    ${tableOrEmpty}
+  `;
+}
+
+function wireStatsEvents() {
+  const dateInput = document.getElementById("m-date");
+  const heightInput = document.getElementById("m-height");
+  const weightInput = document.getElementById("m-weight");
+
+  document.getElementById("add-measurement-btn")?.addEventListener("click", () => {
+    addMeasurement(dateInput.value, heightInput.value, weightInput.value);
+  });
+
+  document.querySelectorAll("[data-delete-measurement]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteMeasurement(btn.dataset.deleteMeasurement));
+  });
+}
+
+function renderGuestFeed() {
+  if (state.guestFeedEntries.length === 0) {
+    return `
+      <div class="section-head"><h2>Tagebuch</h2></div>
+      <div class="empty-state">
+        <span class="mark">&#9670;</span>
+        <p>Es wurden noch keine Einträge für dich freigegeben.</p>
+      </div>
+    `;
+  }
+
+  const entryBlocks = state.guestFeedEntries.map((e) => {
+    const thumbs = (e.images || []).map((img, idx) => `
+      <img src="${img.url || ''}" alt="" loading="lazy" data-open-feed-lightbox="${e.id}:${idx}">
+    `).join("");
+
+    const comments = (e.comments || []).map((c) => `
+      <div class="comment-item">
+        <div class="comment-meta">
+          <span class="comment-author">${escapeHtml(c.author_name)}</span>
+          <span class="comment-date">${formatDateTime(c.created_at)}</span>
+        </div>
+        <p class="comment-content">${escapeHtml(c.content)}</p>
+        ${c.author_id === state.user.id ? `<button class="comment-delete" data-delete-feed-comment="${e.id}:${c.id}" aria-label="Kommentar löschen">&times;</button>` : ""}
+      </div>
+    `).join("");
+
+    return `
+      <div class="entry-card" style="cursor:default;">
+        <div class="entry-date">${formatDate(e.entry_date)}</div>
+        <h3>${escapeHtml(e.title)}</h3>
+        <p class="entry-preview" style="white-space:pre-wrap;">${escapeHtml(e.text_content)}</p>
+        ${thumbs ? `<div class="entry-thumbs" style="flex-wrap:wrap;">${thumbs}</div>` : ""}
+        <div class="comments-section">
+          <h4 class="comments-heading">Kommentare ${e.comments && e.comments.length ? `(${e.comments.length})` : ""}</h4>
+          ${comments || `<p class="comments-empty ui">Noch keine Kommentare. Schreib die erste Anmerkung!</p>`}
+          <div class="comment-form">
+            <input type="text" data-comment-input="${e.id}" placeholder="Kommentar schreiben …" maxlength="1000" value="${escapeAttr(state.guestCommentDrafts[e.id] || "")}">
+            <button class="btn-secondary" data-post-comment="${e.id}">Senden</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="section-head"><h2>Tagebuch</h2></div>
+    ${entryBlocks}
+  `;
+}
+
+function wireGuestFeedEvents() {
+  document.querySelectorAll("[data-comment-input]").forEach((input) => {
+    const entryId = input.dataset.commentInput;
+    input.addEventListener("input", (ev) => updateGuestCommentDraft(entryId, ev.target.value));
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") postGuestComment(entryId);
+    });
+  });
+  document.querySelectorAll("[data-post-comment]").forEach((btn) => {
+    btn.addEventListener("click", () => postGuestComment(btn.dataset.postComment));
+  });
+  document.querySelectorAll("[data-delete-feed-comment]").forEach((btn) => {
+    const [entryId, commentId] = btn.dataset.deleteFeedComment.split(":");
+    btn.addEventListener("click", () => deleteGuestComment(entryId, commentId));
+  });
+  document.querySelectorAll("[data-open-feed-lightbox]").forEach((thumb) => {
+    thumb.addEventListener("click", () => {
+      const [entryId, idxStr] = thumb.dataset.openFeedLightbox.split(":");
+      const entry = state.guestFeedEntries.find((e) => e.id === entryId);
+      if (!entry) return;
+      const imagesWithDate = (entry.images || []).map((img) => ({ ...img, effective_date: entry.entry_date }));
+      openLightbox(imagesWithDate, parseInt(idxStr, 10), "guest-feed");
+    });
+  });
+}
+
+// ---------- Utils ----------
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
+}
+function escapeAttr(str) {
+  return (str || "").replace(/"/g, "&quot;");
+}
+function formatDate(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
+}
+function formatDateTime(isoTimestamp) {
+  const d = new Date(isoTimestamp);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+    " " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Toast renderer (appended on every render call)
+const originalRender = render;
+render = function () {
+  originalRender();
+  const existingToast = document.querySelector(".toast");
+  if (existingToast) existingToast.remove();
+  if (state.toast) {
+    const el = document.createElement("div");
+    el.className = "toast ui";
+    el.textContent = state.toast;
+    document.body.appendChild(el);
+  }
+};
+
+async function init() {
+  const hasInvite = await checkGuestInviteFromUrl();
+  if (!hasInvite) {
+    await checkSession();
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
