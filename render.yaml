@@ -1,0 +1,31 @@
+# Render Blueprint -- optional, aber praktisch: Render erkennt diese Datei
+# automatisch und schlägt die Konfiguration vor, statt dass du alles manuell
+# im Dashboard eintippen musst. Umgebungsvariablen mit "sync: false" musst
+# du trotzdem manuell im Dashboard eintragen (Render verhindert so, dass
+# Geheimnisse versehentlich in dieser Datei landen / in Git eingecheckt werden).
+
+services:
+  - type: web
+    name: projekt-logbuch
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && gunicorn app:app"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FATHER_CODENAME
+        sync: false
+      - key: MOTHER_CODENAME
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.0"
