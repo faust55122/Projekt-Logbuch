@@ -11,6 +11,7 @@ from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask import render_template
 from dotenv import load_dotenv
 
 # Lädt die .env unabhängig davon, aus welchem Verzeichnis "python app.py"
@@ -126,7 +127,7 @@ def me():
 
 @app.route("/")
 def serve_frontend():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    return render_template("index.html")
 
 
 if __name__ == "__main__":
